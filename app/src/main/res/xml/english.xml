@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GamepadKeyboard>
+    <StickDirection position="0">
+        <A>e</A>
+        <B>t</B>
+        <X>a</X>
+        <Y>o</Y>
+    </StickDirection>
+</GamepadKeyboard>

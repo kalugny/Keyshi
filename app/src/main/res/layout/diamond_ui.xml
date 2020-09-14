@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#4DBDBDBD">
+
+    <include
+        android:id="@+id/diamond_8"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <include
+        android:id="@+id/diamond_1"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toEndOf="@id/diamond_8"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <include
+        android:id="@+id/diamond_2"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toEndOf="@id/diamond_1"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <include
+        android:id="@+id/diamond_7"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/diamond_8" />
+
+    <include
+        android:id="@+id/diamond_0"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toEndOf="@id/diamond_7"
+        app:layout_constraintTop_toBottomOf="@id/diamond_1" />
+
+    <include
+        android:id="@+id/diamond_3"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toEndOf="@id/diamond_0"
+        app:layout_constraintTop_toBottomOf="@id/diamond_2" />
+
+    <include
+        android:id="@+id/diamond_6"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/diamond_7" />
+
+    <include
+        android:id="@+id/diamond_5"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toEndOf="@id/diamond_6"
+        app:layout_constraintTop_toBottomOf="@id/diamond_0" />
+
+    <include
+        android:id="@+id/diamond_4"
+        layout="@layout/diamond"
+        android:layout_width="50dp"
+        android:layout_height="70dp"
+        app:layout_constraintStart_toEndOf="@id/diamond_5"
+        app:layout_constraintTop_toBottomOf="@id/diamond_3" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

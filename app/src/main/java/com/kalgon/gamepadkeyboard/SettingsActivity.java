@@ -1,0 +1,82 @@
+package com.kalgon.gamepadkeyboard;
+
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.util.Log;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.preference.PreferenceFragmentCompat;
+
+public class SettingsActivity extends AppCompatActivity
+        implements ActivityCompat.OnRequestPermissionsResultCallback {
+
+    /** code to post/handler request for permission */
+    public final static int REQUEST_CODE = 12312;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode) {
+            case REQUEST_CODE:
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.i("requestPermissionLauncher", "Permission granted");
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // features requires a permission that the user has denied. At the
+                    // same time, respect the user's decision. Don't link to system
+                    // settings in an effort to convince the user to change their
+                    // decision.
+                    Log.w("requestPermissionLauncher", "Permission denied");
+                }
+                return;
+        }
+    };
+
+    public void checkDrawOverlayPermission() {
+        /** check if we already have permission to draw over other apps */
+        if (!Settings.canDrawOverlays(getApplicationContext())) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.SYSTEM_ALERT_WINDOW)){
+                Log.d("checkDrawOverlayPermission", "Need to show rationale");
+            }
+            Log.d("checkDrawOverlayPermission", "Requesting permissions");
+            ActivityCompat.requestPermissions(this,
+                    new String[] { Manifest.permission.SYSTEM_ALERT_WINDOW },
+                    REQUEST_CODE);
+        }
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        checkDrawOverlayPermission();
+
+        setContentView(R.layout.settings_activity);
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.settings, new SettingsFragment())
+                .commit();
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
+        }
+    }
+
+    public static class SettingsFragment extends PreferenceFragmentCompat {
+        @Override
+        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+            setPreferencesFromResource(R.xml.root_preferences, rootKey);
+        }
+    }
+}
