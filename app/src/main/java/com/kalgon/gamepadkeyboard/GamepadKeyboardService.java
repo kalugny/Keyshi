@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.PixelFormat;
 import android.inputmethodservice.InputMethodService;
+import android.os.Debug;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.text.InputType;
@@ -50,22 +51,20 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     // TODO: Move this to a config file
     private final int BACKSPACE = -1;
     private final int SPACE = -2;
-    private int[][] mKeyMap = {
-            // A, B, X, Y, R, L
-            {'E', 'T', 'A', 'O', SPACE, BACKSPACE},
-            {'I', 'N', 'S', 'R', SPACE, BACKSPACE},
-            {'V', 'K', 'X', 'Q', SPACE, BACKSPACE},
-            {'H', 'D', 'L', 'U', SPACE, BACKSPACE},
-            {'J', 'Z', ',', '.', SPACE, BACKSPACE},
-            {'C', 'M', 'F', 'Y', SPACE, BACKSPACE},
-            {'\'', ':', ';', '-', SPACE, BACKSPACE},
-            {'W', 'G', 'P', 'B', SPACE, BACKSPACE},
-            {'+', '"', '!', '?', SPACE, BACKSPACE}
-    };
 
-    private final int[] KEY_ORDER = {KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B,
-            KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_R1,
-            KeyEvent.KEYCODE_BUTTON_L1};
+    private KeyMap mEnglish;
+//    private int[][] mKeyMap = {
+//            // A, B, X, Y, R, L
+//            {'E', 'T', 'A', 'O', SPACE, BACKSPACE},
+//            {'I', 'N', 'S', 'R', SPACE, BACKSPACE},
+//            {'V', 'K', 'X', 'Q', SPACE, BACKSPACE},
+//            {'H', 'D', 'L', 'U', SPACE, BACKSPACE},
+//            {'J', 'Z', ',', '.', SPACE, BACKSPACE},
+//            {'C', 'M', 'F', 'Y', SPACE, BACKSPACE},
+//            {'\'', ':', ';', '-', SPACE, BACKSPACE},
+//            {'W', 'G', 'P', 'B', SPACE, BACKSPACE},
+//            {'+', '"', '!', '?', SPACE, BACKSPACE}
+//    };
 
     private boolean mShift = false;
     private boolean mEnterPressed = false;
@@ -104,40 +103,22 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         super.onDestroy();
     }
 
-    /**
-     * Create new context object whose resources are adjusted to match the metrics of the display
-     * which is managed by WindowManager.
-     */
-    @NonNull
-    Context getDisplayContext() {
-        // TODO (b/133825283): Non-activity components Resources / DisplayMetrics update when
-        //  moving to external display.
-        // An issue in Q that non-activity components Resources / DisplayMetrics in
-        // Context doesn't well updated when the IME window moving to external display.
-        // Currently we do a workaround is to create new display context directly and re-init
-        // keyboard layout with this context.
-        final WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
-        return createDisplayContext(wm.getDefaultDisplay());
-    }
 
     /**
      * This is the point where you can do all of your UI initialization.  It
      * is called after creation and any configuration change.
      */
-//    @Override public void onInitializeInterface() {
-//        final Context displayContext = getDisplayContext();
-//        if (mQwertyKeyboard != null) {
-//            // Configuration changes can happen after the keyboard gets recreated,
-//            // so we need to be able to re-build the keyboards if the available
-//            // SPACE has changed.
-//            int displayWidth = getMaxWidth();
-//            if (displayWidth == mLastDisplayWidth) return;
-//            mLastDisplayWidth = displayWidth;
-//        }
-//        mQwertyKeyboard = new LatinKeyboard(displayContext, R.xml.qwerty);
-//        mSymbolsKeyboard = new LatinKeyboard(displayContext, R.xml.symbols);
-//        mSymbolsShiftedKeyboard = new LatinKeyboard(displayContext, R.xml.symbols_shift);
-//    }
+    @Override public void onInitializeInterface() {
+        Log.d("GamepadKeyboard", "onInitializeInterface");
+        // TODO: How to do this only if something really changed?
+        try {
+            mEnglish = new KeyMap(getApplicationContext(), R.xml.english);
+        }
+        catch (Exception e){
+            Log.e("onInitializeInterface", e.toString());
+        }
+    }
+    
     private boolean usingFloatingKeyboard() {
         return Settings.canDrawOverlays(getApplicationContext());
     }
@@ -179,7 +160,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         Log.i("GamepadKeyboard", "onCreateInputView");
         if (mView == null) {
             mView = getLayoutInflater().inflate(R.layout.diamond_ui, null);
-            setupView(mView, mKeyMap);
+            setupView();
 
             if (usingFloatingKeyboard()) {
                 mView.setOnTouchListener(this);
@@ -190,20 +171,14 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         return mView;
     }
 
-    private void setupView(View view, int[][] keyMap) {
+    private void setupView() {
         final char[] buttons = {'A', 'B', 'X', 'Y'};
         for (int i = 0; i < 9; i++) {
-            View circle = view.findViewById(getResources().getIdentifier("diamond_" + String.valueOf(i), "id", getPackageName()));
+            View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
             Log.d("Test", String.format("%s %d", circle, i));
             for (int b = 0; b < buttons.length; b++) {
                 TextView buttonView = circle.findViewById(getResources().getIdentifier(String.valueOf(buttons[b]), "id", getPackageName()));
-                Log.d("Test", String.format("%s, %d, %c, %s", buttonView, b, keyMap[i][b], String.valueOf(keyMap[i][b])));
-                String letter = String.valueOf((char) keyMap[i][b]);
-                if (mShift) {
-                    letter = letter.toUpperCase();
-                } else {
-                    letter = letter.toLowerCase();
-                }
+                String letter = mEnglish.getKey(i, b, mShift);
                 buttonView.setText(letter);
             }
         }
@@ -279,11 +254,11 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 //        mInputView.setSubtypeOnSPACEKey(subtype);
 //    }
 
-    /**
-     * This translates incoming hard key events in to edit operations on an
-     * InputConnection.  It is only needed when using the
-     * PROCESS_HARD_KEYS option.
-     */
+//    /**
+//     * This translates incoming hard key events in to edit operations on an
+//     * InputConnection.  It is only needed when using the
+//     * PROCESS_HARD_KEYS option.
+//     */
 //    private boolean translateKeyDown(int keyCode, KeyEvent event) {
 //        mMetaState = MetaKeyKeyListener.handleKeyDown(mMetaState,
 //                keyCode, event);
@@ -324,15 +299,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             case KeyEvent.KEYCODE_BUTTON_B:
             case KeyEvent.KEYCODE_BUTTON_X:
             case KeyEvent.KEYCODE_BUTTON_Y:
-            case KeyEvent.KEYCODE_BUTTON_R1:
-            case KeyEvent.KEYCODE_BUTTON_L1:
+
                 // DEBUG
             case KeyEvent.KEYCODE_A:
             case KeyEvent.KEYCODE_B:
             case KeyEvent.KEYCODE_X:
             case KeyEvent.KEYCODE_Y:
-            case KeyEvent.KEYCODE_R:
-            case KeyEvent.KEYCODE_L:
                 InputConnection ic = getCurrentInputConnection();
                 if (ic != null) {
 
@@ -341,31 +313,23 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                         if (keyCode == KeyEvent.KEYCODE_B) keyCode = KeyEvent.KEYCODE_BUTTON_B;
                         if (keyCode == KeyEvent.KEYCODE_X) keyCode = KeyEvent.KEYCODE_BUTTON_X;
                         if (keyCode == KeyEvent.KEYCODE_Y) keyCode = KeyEvent.KEYCODE_BUTTON_Y;
-                        if (keyCode == KeyEvent.KEYCODE_R) keyCode = KeyEvent.KEYCODE_BUTTON_R1;
-                        if (keyCode == KeyEvent.KEYCODE_L) keyCode = KeyEvent.KEYCODE_BUTTON_L1;
                     }
 
-                    int i = 0;
-                    for (; i < KEY_ORDER.length; i++) {
-                        if (KEY_ORDER[i] == keyCode) break;
-                    }
-
-                    int key = mKeyMap[mStickPosition][i];
-
-                    if (key == BACKSPACE) {
-                        keyDownUp(KeyEvent.KEYCODE_DEL);
-                        return true;
-                    }
-                    if (key == SPACE) {
-                        keyDownUp(KeyEvent.KEYCODE_SPACE);
-                        return true;
-                    }
-
-                    String keyS = String.valueOf((char) key);
-                    ic.commitText(mShift ? keyS.toUpperCase() : keyS.toLowerCase(), 1);
+                    String key = mEnglish.getKey(mStickPosition, mEnglish.keyCodeToButtonIndex(keyCode), mShift);
+                    ic.commitText(key, 1);
                     return true;
                 }
                 break;
+
+            case KeyEvent.KEYCODE_BUTTON_R1:
+            case KeyEvent.KEYCODE_R:  // DEBUG
+                keyDownUp(KeyEvent.KEYCODE_SPACE);
+                return true;
+
+            case KeyEvent.KEYCODE_BUTTON_L1:
+            case KeyEvent.KEYCODE_L:  // DEBUG
+                keyDownUp(KeyEvent.KEYCODE_DEL);
+                return true;
 
             case KeyEvent.KEYCODE_DPAD_UP:
                 dpadUpDown = -1;
@@ -391,7 +355,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             case KeyEvent.KEYCODE_BUTTON_L2:
             case KeyEvent.KEYCODE_2:
                 mShift = true;
-                setupView(mView, mKeyMap);
+                setupView();
                 return true;
         }
 
@@ -435,7 +399,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             case KeyEvent.KEYCODE_BUTTON_L2:
             case KeyEvent.KEYCODE_2:
                 mShift = false;
-                setupView(mView, mKeyMap);
+                setupView();
                 return true;
         }
 
@@ -454,7 +418,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private void highlightStickPosition() {
         char[] buttons = {'A', 'B', 'X', 'Y'};
         for (int i = 0; i < 9; i++) {
-            View circle = mView.findViewById(getResources().getIdentifier("diamond_" + String.valueOf(i), "id", getPackageName()));
+            View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
             circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
         }
 
@@ -582,10 +546,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
     }
 
-    /**
-     * Helper to update the shift state of our keyboard based on the initial
-     * editor state.
-     */
+//    /**
+//     * Helper to update the shift state of our keyboard based on the initial
+//     * editor state.
+//     */
 //    private void updateShiftKeyState(EditorInfo attr) {
 //        if (attr != null && mInputView != null && mQwertyKeyboard == mInputView.getKeyboard()) {
 //            int caps = 0;

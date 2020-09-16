@@ -1,9 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <GamepadKeyboard>
+    <!-- The keyboard is built according to this principle: -->
+    <!-- A. The 4 most common letters (e, t, a, o) are in the middle -->
+    <!-- B. The next letters are set according to the most common pairs (from https://gist.github.com/lydell/c439049abac2c9226e53) -->
+    <!--    where the paired letter uses the same button in a different stick position or a different button in the same position -->
+    <!-- C. Use the 4 main directions for the more common letters, leaving the diagonals for the less common -->
+
+    <!-- Middle -->
     <StickDirection position="0">
         <A>e</A>
         <B>t</B>
         <X>a</X>
         <Y>o</Y>
+    </StickDirection>
+    <!-- Up -->
+    <StickDirection position="1">
+        <A>r</A>
+        <B>h</B>
+        <X>n</X>
+        <Y>i</Y>
+    </StickDirection>
+    <!-- Right -->
+    <StickDirection position="3">
+        <A>s</A>
+        <B>b</B>
+        <X>d</X>
+        <Y>f</Y>
+    </StickDirection>
+    <!-- Down -->
+    <StickDirection position="5">
+        <A>v</A>
+        <B>p</B>
+        <X>l</X>
+        <Y>u</Y>
+    </StickDirection>
+    <!-- Left -->
+    <StickDirection position="7">
+        <A>m</A>
+        <B>y</B>
+        <X>g</X>
+        <Y>c</Y>
+    </StickDirection>
+    <!-- Top-Right -->
+    <StickDirection position="2">
+        <A>x</A>
+        <B alt="_">.</B>
+        <X>w</X>
+        <Y>q</Y>
+    </StickDirection>
+    <!-- Bottom-Right -->
+    <StickDirection position="4">
+        <A>k</A>
+        <B alt="=">,</B>
+        <X>j</X>
+        <Y>z</Y>
+    </StickDirection>
+    <!-- Bottom-Left -->
+    <StickDirection position="6">
+        <A alt=":">"</A>
+        <B alt="/">'</B>
+        <X alt="*">-</X>
+        <Y alt="$">?</Y>
+    </StickDirection>
+    <!-- Top-Left -->
+    <StickDirection position="8">
+        <A alt=">">!</A>
+        <B alt="+">;</B>
+        <X alt="{">(</X>
+        <Y alt="}">)</Y>
     </StickDirection>
 </GamepadKeyboard>
