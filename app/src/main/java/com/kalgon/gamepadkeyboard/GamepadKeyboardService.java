@@ -20,8 +20,11 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+
+import java.util.List;
 
 public class GamepadKeyboardService extends InputMethodService implements View.OnTouchListener {
 
@@ -46,7 +49,9 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     // 0 is centered, 1 is 12 o'clock and advancing clockwise every eighth
     private int mStickPosition = 0;
 
+    private KeyMap mCurrentKeyboard;
     private KeyMap mEnglish;
+    private KeyMap mSymbols;
 
     private boolean mShift = false;
     private boolean mEnterPressed = false;
@@ -97,6 +102,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         // TODO: How to do this only if something really changed?
         try {
             mEnglish = new KeyMap(getApplicationContext(), R.xml.english);
+            mSymbols = new KeyMap(getApplicationContext(), R.xml.symbols);
         }
         catch (Exception e){
             Log.e("onInitializeInterface", e.toString());
@@ -169,7 +175,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             Log.d("Test", String.format("%s %d", circle, i));
             for (int b = 0; b < buttons.length; b++) {
                 TextView buttonView = circle.findViewById(getResources().getIdentifier(String.valueOf(buttons[b]), "id", getPackageName()));
-                String letter = mEnglish.getKey(i, b, mShift);
+                String letter = mCurrentKeyboard.getKey(i, b, mShift);
                 buttonView.setText(letter);
             }
         }
@@ -202,20 +208,19 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             case InputType.TYPE_CLASS_DATETIME:
                 // Numbers and dates default to the symbols keyboard, with
                 // no extra features.
-//                mCurKeyboard = mSymbolsKeyboard;
+                mCurrentKeyboard = mSymbols;
                 break;
 
             case InputType.TYPE_CLASS_PHONE:
                 // Phones will also default to the symbols keyboard, though
                 // often you will want to have a dedicated phone keyboard.
-//                mCurKeyboard = mSymbolsKeyboard;
+                mCurrentKeyboard = mSymbols;
                 break;
 
             default:
                 // For all unknown input types, default to the alphabetic
                 // keyboard with no special features.
-//                mCurKeyboard = mQwertyKeyboard;
-//                updateShiftKeyState(attribute);
+                mCurrentKeyboard = mEnglish;
         }
 
     }
@@ -287,9 +292,14 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
      */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        Log.i("GamepadKeyboard", "onKeyDown");
+        Log.i("GamepadKeyboard", "onKeyDown. Key = " + keyCode);
 
         if (!mUsingGamepad) return false;
+
+//        if (System.currentTimeMillis() - lastToastTime > 1000){
+//            Toast.makeText(getApplicationContext(), "key = " + keyCode, Toast.LENGTH_SHORT).show();
+//            lastToastTime = System.currentTimeMillis();
+//        }
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
@@ -316,7 +326,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                         if (keyCode == KeyEvent.KEYCODE_Y) keyCode = KeyEvent.KEYCODE_BUTTON_Y;
                     }
 
-                    String key = mEnglish.getKey(mStickPosition, mEnglish.keyCodeToButtonIndex(keyCode), mShift);
+                    String key = mCurrentKeyboard.getKey(mStickPosition, mCurrentKeyboard.keyCodeToButtonIndex(keyCode), mShift);
                     ic.commitText(key, 1);
                     return true;
                 }
@@ -422,12 +432,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
 
     private void highlightStickPosition() {
-        char[] buttons = {'A', 'B', 'X', 'Y'};
         for (int i = 0; i < 9; i++) {
             View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
             circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
         }
-
     }
 
     @Override
@@ -484,14 +492,25 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
         float x = getCenteredAxis(event, inputDevice, MotionEvent.AXIS_X, historyPos);
         float y = getCenteredAxis(event, inputDevice, MotionEvent.AXIS_Y, historyPos);
-
         updateStickPosition(x, y);
 
-//        // Check the R2 and L2 triggers
-//        float l2 = getCenteredAxis(event, inputDevice, MotionEvent.AXIS_LTRIGGER, historyPos);
-//        float r2 = getCenteredAxis(event, inputDevice, MotionEvent.AXIS_RTRIGGER, historyPos);
-//
+        // Check the DPAD (hat)
+        float hatX = getCenteredAxis(event, inputDevice, MotionEvent.AXIS_HAT_X, historyPos);
+        float hatY = getCenteredAxis(event, inputDevice, MotionEvent.AXIS_HAT_Y, historyPos);
+        updateHat(hatX, hatY);
+
 //        updateL2R2(l2, r2);
+    }
+
+    private void updateHat(float hatX, float hatY){
+        if (hatY == 1.0f){
+            toggleSymbols();
+        }
+    }
+
+    private void toggleSymbols() {
+        mCurrentKeyboard = (mCurrentKeyboard == mSymbols) ? mEnglish : mSymbols;
+        setupView();
     }
 
 //    private void updateL2R2(float l2, float r2){
@@ -519,7 +538,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 //        Log.d("updateL2R2", String.format("mEnterPressed = %b, mShift = %b", mEnterPressed, mShift));
 //    }
 
-    //    private long lastToastTime = 0;
     private void updateStickPosition(float x, float y) {
 
         double omega = Math.atan2(x, y) / Math.PI * 180;

@@ -6,60 +6,61 @@
     <!--    where the paired letter uses the same button in a different stick position or a different button in the same position -->
     <!-- C. Use the 4 main directions for the more common letters, leaving the diagonals for the less common -->
 
+      ^ ` ~
     <!-- Middle -->
     <StickDirection position="0">
-        <A>e</A>
-        <B>t</B>
-        <X>a</X>
-        <Y>o</Y>
+        <A>4</A>
+        <B>3</B>
+        <X>1</X>
+        <Y>2</Y>
     </StickDirection>
     <!-- Up -->
     <StickDirection position="1">
-        <A>r</A>
-        <B>h</B>
-        <X>n</X>
-        <Y>i</Y>
+        <A>8</A>
+        <B>7</B>
+        <X>5</X>
+        <Y>6</Y>
     </StickDirection>
     <!-- Right -->
     <StickDirection position="3">
-        <A>s</A>
-        <B>b</B>
-        <X>d</X>
-        <Y>f</Y>
+        <A>*</A>
+        <B>=</B>
+        <X>9</X>
+        <Y>0</Y>
     </StickDirection>
     <!-- Down -->
     <StickDirection position="5">
-        <A>v</A>
-        <B>p</B>
-        <X>l</X>
-        <Y>u</Y>
+        <A>/</A>
+        <B>$</B>
+        <X>&gt;</X>
+        <Y>&lt;</Y>
     </StickDirection>
     <!-- Left -->
     <StickDirection position="7">
-        <A>m</A>
-        <B>y</B>
-        <X>g</X>
-        <Y>c</Y>
+        <A alt="^">&amp;</A>
+        <B>%</B>
+        <X>@</X>
+        <Y>#</Y>
     </StickDirection>
     <!-- Top-Right -->
     <StickDirection position="2">
-        <A>x</A>
+        <A>:</A>
         <B>.</B>
-        <X>w</X>
-        <Y>q</Y>
+        <X>\</X>
+        <Y>|</Y>
     </StickDirection>
     <!-- Bottom-Right -->
     <StickDirection position="4">
-        <A>k</A>
+        <A>+</A>
         <B>,</B>
-        <X>j</X>
-        <Y>z</Y>
+        <X alt="{">[</X>
+        <Y alt="}">]</Y>
     </StickDirection>
     <!-- Bottom-Left -->
     <StickDirection position="6">
         <A>"</A>
-        <B>'</B>
-        <X>-</X>
+        <B alt="`">'</B>
+        <X alt="~">-</X>
         <Y>?</Y>
     </StickDirection>
     <!-- Top-Left -->
