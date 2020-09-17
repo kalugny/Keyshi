@@ -42,29 +42,11 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 //
 //    private LatinKeyboard mCurKeyboard;
 
-    private String mWordSeparators;
-
     // Position of the stick (which represents the letters available). 0-8 where
     // 0 is centered, 1 is 12 o'clock and advancing clockwise every eighth
     private int mStickPosition = 0;
-    // This is the mapping between the stick position and the 4 face buttons and 2 triggers
-    // TODO: Move this to a config file
-    private final int BACKSPACE = -1;
-    private final int SPACE = -2;
 
     private KeyMap mEnglish;
-//    private int[][] mKeyMap = {
-//            // A, B, X, Y, R, L
-//            {'E', 'T', 'A', 'O', SPACE, BACKSPACE},
-//            {'I', 'N', 'S', 'R', SPACE, BACKSPACE},
-//            {'V', 'K', 'X', 'Q', SPACE, BACKSPACE},
-//            {'H', 'D', 'L', 'U', SPACE, BACKSPACE},
-//            {'J', 'Z', ',', '.', SPACE, BACKSPACE},
-//            {'C', 'M', 'F', 'Y', SPACE, BACKSPACE},
-//            {'\'', ':', ';', '-', SPACE, BACKSPACE},
-//            {'W', 'G', 'P', 'B', SPACE, BACKSPACE},
-//            {'+', '"', '!', '?', SPACE, BACKSPACE}
-//    };
 
     private boolean mShift = false;
     private boolean mEnterPressed = false;
@@ -72,6 +54,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private boolean mViewAddedToWindowManager = false;
     private int mViewDeltaX = 0;
     private int mViewDeltaY = 0;
+
+    private boolean mUsingGamepad = false;
 
     // DEBUG
     private int dpadUpDown = 0;
@@ -89,16 +73,16 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         Log.i("GamepadKeyboard", "onCreate");
         super.onCreate();
 
-//        Debug.waitForDebugger();
+        //        Debug.waitForDebugger();
 
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
         mInputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        mWordSeparators = getResources().getString(R.string.word_separators);
     }
 
     @Override
     public void onDestroy() {
+        Log.i("GamepadKeyboard", "onDestroy");
         if (mView != null) mWindowManager.removeView(mView);
         super.onDestroy();
     }
@@ -124,6 +108,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     }
 
     private void addViewToWindowManager() {
+        Log.d("addViewToWindowManager", "mViewAddedToWindowManager = " + mViewAddedToWindowManager);
         if (!mViewAddedToWindowManager && mView != null) {
             WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                     WindowManager.LayoutParams.WRAP_CONTENT,
@@ -136,6 +121,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             params.x = 0;
             params.y = 0;
 
+            Log.d("addViewToWindowManager", "mView parent = " + mView.getParent());
             mWindowManager.addView(mView, params);
 
             mViewAddedToWindowManager = true;
@@ -143,8 +129,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     }
 
     private void removeViewFromWindowManager() {
+        Log.d("removeViewFromWindowManager", "mViewAddedToWindowManager = " + mViewAddedToWindowManager);
         if (mViewAddedToWindowManager) {
             mWindowManager.removeView(mView);
+            Log.d("removeViewFromWindowManager", "mView parent = " + mView.getParent());
             mViewAddedToWindowManager = false;
         }
     }
@@ -162,10 +150,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             mView = getLayoutInflater().inflate(R.layout.diamond_ui, null);
             setupView();
 
-            if (usingFloatingKeyboard()) {
+            if (usingFloatingKeyboard()){
                 mView.setOnTouchListener(this);
-                return null;
             }
+        }
+
+        if (usingFloatingKeyboard()) {
+            return null;
         }
 
         return mView;
@@ -193,8 +184,16 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
      */
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
-        Log.i("GamepadKeyboard", "onStartInput");
+        Log.i("GamepadKeyboard", "onStartInput. restarting = " + restarting + ", Input type = " + attribute.inputType);
         super.onStartInput(attribute, restarting);
+
+        if (attribute.inputType == InputType.TYPE_NULL){
+            // This is not an input editor, so it's better that the gamepad will work as a gamepad
+            // and not as a keyboard
+            mUsingGamepad = false;
+            return;
+        }
+        mUsingGamepad = true;
 
         // We are now going to initialize our state based on the type of
         // text being edited.
@@ -234,6 +233,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     @Override
     public void onFinishInputView(boolean finishingInput) {
+        Log.i("GamepadKeyboard", "onFinishInputView");
         if (usingFloatingKeyboard()) {
             removeViewFromWindowManager();
         }
@@ -242,7 +242,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     @Override
     public void onStartInputView(EditorInfo attribute, boolean restarting) {
-        Log.i("GamepadKeyboard", "onStartInputView");
+        Log.i("GamepadKeyboard", "onStartInputView. restarting = " + restarting);
         super.onStartInputView(attribute, restarting);
         if (usingFloatingKeyboard()) {
             addViewToWindowManager();
@@ -288,6 +288,9 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         Log.i("GamepadKeyboard", "onKeyDown");
+
+        if (!mUsingGamepad) return false;
+
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_DEL:
@@ -299,12 +302,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             case KeyEvent.KEYCODE_BUTTON_B:
             case KeyEvent.KEYCODE_BUTTON_X:
             case KeyEvent.KEYCODE_BUTTON_Y:
-
-                // DEBUG
-            case KeyEvent.KEYCODE_A:
-            case KeyEvent.KEYCODE_B:
-            case KeyEvent.KEYCODE_X:
-            case KeyEvent.KEYCODE_Y:
+            case KeyEvent.KEYCODE_A: // DEBUG
+            case KeyEvent.KEYCODE_B: // DEBUG
+            case KeyEvent.KEYCODE_X: // DEBUG
+            case KeyEvent.KEYCODE_Y: // DEBUG
                 InputConnection ic = getCurrentInputConnection();
                 if (ic != null) {
 
@@ -331,29 +332,29 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 keyDownUp(KeyEvent.KEYCODE_DEL);
                 return true;
 
-            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_UP: // DEBUG
                 dpadUpDown = -1;
                 break;
 
-            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_DOWN: // DEBUG
                 dpadUpDown = 1;
                 break;
 
-            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_LEFT: // DEBUG
                 dpadLeftRight = -1;
                 break;
 
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT: // DEBUG
                 dpadLeftRight = 1;
                 break;
 
             case KeyEvent.KEYCODE_BUTTON_R2:
-            case KeyEvent.KEYCODE_1:
+            case KeyEvent.KEYCODE_1: // DEBUG
                 keyDownUp(KeyEvent.KEYCODE_ENTER);
                 return true;
 
             case KeyEvent.KEYCODE_BUTTON_L2:
-            case KeyEvent.KEYCODE_2:
+            case KeyEvent.KEYCODE_2: // DEBUG
                 mShift = true;
                 setupView();
                 return true;
@@ -370,6 +371,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         return super.onKeyDown(keyCode, event);
     }
 
+    // DEBUG
     private void updateDpadStickPosition() {
         float x = dpadLeftRight;
         float y = dpadUpDown;
@@ -385,19 +387,23 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         Log.i("GamepadKeyboard", "onKeyUp");
+        super.onKeyUp(keyCode, event);
+
+        if (!mUsingGamepad) return false;
+
         switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_UP:
-            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_UP:   // DEBUG
+            case KeyEvent.KEYCODE_DPAD_DOWN: // DEBUG
                 dpadUpDown = 0;
                 break;
 
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_LEFT:  // DEBUG
+            case KeyEvent.KEYCODE_DPAD_RIGHT: // DEBUG
                 dpadLeftRight = 0;
                 break;
 
             case KeyEvent.KEYCODE_BUTTON_L2:
-            case KeyEvent.KEYCODE_2:
+            case KeyEvent.KEYCODE_2:   // DEBUG
                 mShift = false;
                 setupView();
                 return true;
@@ -411,7 +417,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             return true;
         }
 
-        return super.onKeyUp(keyCode, event);
+        return false;
     }
 
 
@@ -463,7 +469,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                     historyPos < 0 ? event.getAxisValue(axis) :
                             event.getHistoricalAxisValue(axis, historyPos);
 
-//            Log.d("getCenteredAxis", String.format("flat = %f, value = %f", flat, value));
             // Ignore axis values that are within the 'flat' region of the
             // joystick axis center.
             if (Math.abs(value) > flat) {
@@ -520,13 +525,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         double omega = Math.atan2(x, y) / Math.PI * 180;
 
         // We're looking for a 45 degree slice for each of the main 8 directions
-
-//        long now = System.currentTimeMillis();
-//        if (now - lastToastTime > 1000) {
-//            lastToastTime = now;
-//            Toast.makeText(getApplicationContext(), String.format("x = %f, y = %f, omega = %f", x, y, omega), Toast.LENGTH_SHORT).show();
-//        }
-
         int newStickPos = -1;
         if (x == 0 && y == 0) newStickPos = 0;
         else if (omega > 158 || omega <= -158) newStickPos = 1;
@@ -538,7 +536,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         else if (omega <= -67 && omega > -112) newStickPos = 7;
         else if (omega <= -112 && omega > -158) newStickPos = 8;
 
-        Log.d("processJoystickInput", String.format("x = %f, y = %f, omega = %f, newStickPos = %d", x, y, omega, newStickPos));
+//        Log.d("processJoystickInput", String.format("x = %f, y = %f, omega = %f, newStickPos = %d", x, y, omega, newStickPos));
 
         if (newStickPos != mStickPosition) {
             mStickPosition = newStickPos;
@@ -546,27 +544,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
     }
 
-//    /**
-//     * Helper to update the shift state of our keyboard based on the initial
-//     * editor state.
-//     */
-//    private void updateShiftKeyState(EditorInfo attr) {
-//        if (attr != null && mInputView != null && mQwertyKeyboard == mInputView.getKeyboard()) {
-//            int caps = 0;
-//            EditorInfo ei = getCurrentInputEditorInfo();
-//            if (ei != null && ei.inputType != InputType.TYPE_NULL) {
-//                caps = getCurrentInputConnection().getCursorCapsMode(attr.inputType);
-//            }
-//            mInputView.setShifted(mCapsLock || caps != 0);
-//        }
-//    }
-
-    /**
-     * Helper to determine if a given character code is alphabetic.
-     */
-    private boolean isAlphabet(int code) {
-        return Character.isLetter(code);
-    }
 
     /**
      * Helper to send a key down / key up pair to the current editor.
@@ -593,137 +570,30 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
     }
 
-    // Implementation of KeyboardViewListener
-//    public void onKey(int primaryCode, int[] keyCodes) {
-//        if (isWordSeparator(primaryCode)) {
-//            // Handle separator
-//            if (mComposing.length() > 0) {
-//                commitTyped(getCurrentInputConnection());
-//            }
-//            sendKey(primaryCode);
-//            updateShiftKeyState(getCurrentInputEditorInfo());
-//        } else if (primaryCode == Keyboard.KEYCODE_DELETE) {
-//            handleBackSPACE();
-//        } else if (primaryCode == Keyboard.KEYCODE_SHIFT) {
-//            handleShift();
-//        } else if (primaryCode == Keyboard.KEYCODE_CANCEL) {
-//            handleClose();
-//            return;
-//        } else if (primaryCode == LatinKeyboardView.KEYCODE_LANGUAGE_SWITCH) {
-//            handleLanguageSwitch();
-//            return;
-//        } else if (primaryCode == LatinKeyboardView.KEYCODE_OPTIONS) {
-//            // Show a menu or somethin'
-//        } else if (primaryCode == Keyboard.KEYCODE_MODE_CHANGE
-//                && mInputView != null) {
-//            Keyboard current = mInputView.getKeyboard();
-//            if (current == mSymbolsKeyboard || current == mSymbolsShiftedKeyboard) {
-//                setLatinKeyboard(mQwertyKeyboard);
-//            } else {
-//                setLatinKeyboard(mSymbolsKeyboard);
-//                mSymbolsKeyboard.setShifted(false);
-//            }
+
+//
+//    private IBinder getToken() {
+//        final Dialog dialog = getWindow();
+//        if (dialog == null) {
+//            return null;
+//        }
+//        final Window window = dialog.getWindow();
+//        if (window == null) {
+//            return null;
+//        }
+//        return window.getAttributes().token;
+//    }
+//
+//    private void checkToggleCapsLock() {
+//        long now = System.currentTimeMillis();
+//        if (mLastShiftTime + 800 > now) {
+//            mCapsLock = !mCapsLock;
+//            mLastShiftTime = 0;
 //        } else {
-//            handleCharacter(primaryCode, keyCodes);
-//        }
-//    }
-
-//    public void onText(CharSequence text) {
-//        InputConnection ic = getCurrentInputConnection();
-//        if (ic == null) return;
-//        ic.beginBatchEdit();
-//        if (mComposing.length() > 0) {
-//            commitTyped(ic);
-//        }
-//        ic.commitText(text, 0);
-//        ic.endBatchEdit();
-//        updateShiftKeyState(getCurrentInputEditorInfo());
-//    }
-
-//    private void handleBackSPACE() {
-//        final int length = mComposing.length();
-//        if (length > 1) {
-//            mComposing.delete(length - 1, length);
-//            getCurrentInputConnection().setComposingText(mComposing, 1);
-//        } else if (length > 0) {
-//            mComposing.setLength(0);
-//            getCurrentInputConnection().commitText("", 0);
-//        } else {
-//            keyDownUp(KeyEvent.KEYCODE_DEL);
-//        }
-//        updateShiftKeyState(getCurrentInputEditorInfo());
-//    }
-//
-//    private void handleShift() {
-//        if (mInputView == null) {
-//            return;
-//        }
-//
-//        Keyboard currentKeyboard = mInputView.getKeyboard();
-//        if (mQwertyKeyboard == currentKeyboard) {
-//            // Alphabet keyboard
-//            checkToggleCapsLock();
-//            mInputView.setShifted(mCapsLock || !mInputView.isShifted());
-//        } else if (currentKeyboard == mSymbolsKeyboard) {
-//            mSymbolsKeyboard.setShifted(true);
-//            setLatinKeyboard(mSymbolsShiftedKeyboard);
-//            mSymbolsShiftedKeyboard.setShifted(true);
-//        } else if (currentKeyboard == mSymbolsShiftedKeyboard) {
-//            mSymbolsShiftedKeyboard.setShifted(false);
-//            setLatinKeyboard(mSymbolsKeyboard);
-//            mSymbolsKeyboard.setShifted(false);
+//            mLastShiftTime = now;
 //        }
 //    }
 //
-//    private void handleCharacter(int primaryCode, int[] keyCodes) {
-//        if (isInputViewShown()) {
-//            if (mInputView.isShifted()) {
-//                primaryCode = Character.toUpperCase(primaryCode);
-//            }
-//        }
-//        getCurrentInputConnection().commitText(String.valueOf((char) primaryCode), 1);
-//    }
-//
-//    private void handleClose() {
-//        commitTyped(getCurrentInputConnection());
-//        requestHideSelf(0);
-//        mInputView.closing();
-//    }
-
-    private IBinder getToken() {
-        final Dialog dialog = getWindow();
-        if (dialog == null) {
-            return null;
-        }
-        final Window window = dialog.getWindow();
-        if (window == null) {
-            return null;
-        }
-        return window.getAttributes().token;
-    }
-
-    private void handleLanguageSwitch() {
-        mInputMethodManager.switchToNextInputMethod(getToken(), false);
-    }
-
-    private void checkToggleCapsLock() {
-        long now = System.currentTimeMillis();
-        if (mLastShiftTime + 800 > now) {
-            mCapsLock = !mCapsLock;
-            mLastShiftTime = 0;
-        } else {
-            mLastShiftTime = now;
-        }
-    }
-
-    private String getWordSeparators() {
-        return mWordSeparators;
-    }
-
-    public boolean isWordSeparator(int code) {
-        String separators = getWordSeparators();
-        return separators.contains(String.valueOf((char) code));
-    }
 
     @Override
     public boolean onTouch(View view, MotionEvent event) {
