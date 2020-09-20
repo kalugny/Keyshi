@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <GamepadKeyboard>
-    <!-- The punctuation characters in the English keyboard, are here in the same location -->
+    <!-- The most common letters are in the middle and the four main directions -->
 
     <!-- Middle -->
     <StickDirection position="0">
-        <A>4</A>
-        <B>3</B>
-        <X>1</X>
-        <Y>2</Y>
+        <A>י</A>
+        <B>ו</B>
+        <X>ה</X>
+        <Y>ר</Y>
     </StickDirection>
     <!-- Up -->
     <StickDirection position="1">
-        <A>8</A>
-        <B>7</B>
-        <X>5</X>
-        <Y>6</Y>
+        <A>ל</A>
+        <B>ת</B>
+        <X>ב</X>
+        <Y>מ</Y>
     </StickDirection>
     <!-- Right -->
     <StickDirection position="3">
-        <A>*</A>
-        <B>=</B>
-        <X>9</X>
-        <Y>0</Y>
+        <A>א</A>
+        <B>ש</B>
+        <X>נ</X>
+        <Y>ע</Y>
     </StickDirection>
     <!-- Down -->
     <StickDirection position="5">
-        <A>/</A>
-        <B>$</B>
-        <X>&gt;</X>
-        <Y>&lt;</Y>
+        <A>ד</A>
+        <B>ם</B>
+        <X>ק</X>
+        <Y>ח</Y>
     </StickDirection>
     <!-- Left -->
     <StickDirection position="7">
-        <A alt="^">&amp;</A>
-        <B>%</B>
-        <X>@</X>
-        <Y>#</Y>
+        <A>פ</A>
+        <B>ס</B>
+        <X>כ</X>
+        <Y>ג</Y>
     </StickDirection>
     <!-- Top-Right -->
     <StickDirection position="2">
-        <A>:</A>
+        <A>ט</A>
         <B>.</B>
-        <X>\</X>
-        <Y>|</Y>
+        <X>ן</X>
+        <Y alt="ץ">צ</Y>
     </StickDirection>
     <!-- Bottom-Right -->
     <StickDirection position="4">
-        <A>+</A>
+        <A>ז</A>
         <B>,</B>
-        <X alt="{">[</X>
-        <Y alt="}">]</Y>
+        <X>ך</X>
+        <Y>ף</Y>
     </StickDirection>
     <!-- Bottom-Left -->
     <StickDirection position="6">
         <A>"</A>
-        <B alt="`">'</B>
-        <X alt="~">-</X>
+        <B>'</B>
+        <X>-</X>
         <Y>?</Y>
     </StickDirection>
     <!-- Top-Left -->

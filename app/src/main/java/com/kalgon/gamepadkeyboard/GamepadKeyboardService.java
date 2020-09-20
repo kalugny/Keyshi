@@ -17,11 +17,13 @@ import android.view.inputmethod.InputConnection;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+
 public class GamepadKeyboardService extends InputMethodService implements View.OnTouchListener {
 
     private final boolean DEBUG = true;
 
-//    private InputMethodManager mInputMethodManager;
+    //    private InputMethodManager mInputMethodManager;
     private View mView = null;
     private WindowManager mWindowManager;
 
@@ -34,8 +36,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private int mRightStickPosition = 0;
 
     private KeyMap mCurrentKeyboard = null;
-    private KeyMap mEnglish = null;
+    private ArrayList<KeyMap> mKeyboards = new ArrayList<KeyMap>() {
+    };
+    private int mKeyboardIndex = 0;
+    private final String[] AVAILABLE_KEYBOARDS = new String[]{"english", "hebrew"};
     private KeyMap mSymbols = null;
+    private boolean mSymbolsShown = false;
 
     private boolean mShift = false;
     private boolean mEnterPressed = false;
@@ -45,7 +51,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private int mViewDeltaY = 0;
 
     private boolean mUsingGamepad = false;
-    private long mLastKeyRepeatTime = 0;
     private final long KEY_REPEAT_MS = 200;
 
     final Handler handler = new Handler();
@@ -71,8 +76,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         //        Debug.waitForDebugger();
 
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-
-//        mInputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
     }
 
     @Override
@@ -92,9 +95,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         Log.d("GamepadKeyboard", "onInitializeInterface");
         // TODO: How to do this only if something really changed?
         try {
-            if (mEnglish == null || mSymbols == null) {
-                mEnglish = new KeyMap(getApplicationContext(), R.xml.english);
+            if (mKeyboards.size() == 0) {
                 mSymbols = new KeyMap(getApplicationContext(), R.xml.symbols);
+                for (String keyboardName : AVAILABLE_KEYBOARDS) {
+                    int resourceId = getResources().getIdentifier(keyboardName, "xml", getPackageName());
+                    mKeyboards.add(new KeyMap(getApplicationContext(), resourceId));
+                }
             }
         } catch (Exception e) {
             Log.e("onInitializeInterface", e.toString());
@@ -201,19 +207,19 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 case InputType.TYPE_CLASS_DATETIME:
                     // Numbers and dates default to the symbols keyboard, with
                     // no extra features.
-                    changeKeyboard(mSymbols);
+                    toggleSymbols(true);
                     break;
 
                 case InputType.TYPE_CLASS_PHONE:
                     // Phones will also default to the symbols keyboard, though
                     // often you will want to have a dedicated phone keyboard.
-                    changeKeyboard(mSymbols);
+                    toggleSymbols(true);
                     break;
 
                 default:
                     // For all unknown input types, default to the alphabetic
                     // keyboard with no special features.
-                    changeKeyboard(mEnglish);
+                    mCurrentKeyboard = mKeyboards.get(mKeyboardIndex);
             }
         }
     }
@@ -247,37 +253,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
         setupView();
     }
-
-//    @Override
-//    public void onCurrentInputMethodSubtypeChanged(InputMethodSubtype subtype) {
-//        mInputView.setSubtypeOnSPACEKey(subtype);
-//    }
-
-//    /**
-//     * This translates incoming hard key events in to edit operations on an
-//     * InputConnection.  It is only needed when using the
-//     * PROCESS_HARD_KEYS option.
-//     */
-//    private boolean translateKeyDown(int keyCode, KeyEvent event) {
-//        mMetaState = MetaKeyKeyListener.handleKeyDown(mMetaState,
-//                keyCode, event);
-//        int c = event.getUnicodeChar(MetaKeyKeyListener.getMetaState(mMetaState));
-//        mMetaState = MetaKeyKeyListener.adjustMetaAfterKeypress(mMetaState);
-//        InputConnection ic = getCurrentInputConnection();
-//        if (c == 0 || ic == null) {
-//            return false;
-//        }
-//
-//        boolean dead = false;
-//        if ((c & KeyCharacterMap.COMBINING_ACCENT) != 0) {
-//            dead = true;
-//            c = c & KeyCharacterMap.COMBINING_ACCENT_MASK;
-//        }
-//
-//        onKey(c, null);
-//
-//        return true;
-//    }
 
     /**
      * Use this to monitor key events being delivered to the application.
@@ -538,15 +513,40 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     private void updateHat(float hatX, float hatY) {
         if (hatY == -1.0f) {
-            changeKeyboard((mCurrentKeyboard == mSymbols) ? mEnglish : mSymbols);
+            toggleSymbols(false);
+        } else if (hatX == 1.0f) {
+            nextKeyboard();
+        } else if (hatX == -1.0f) {
+            prevKeyboard();
         }
     }
 
-    private void changeKeyboard(KeyMap newKeyboard) {
-        mCurrentKeyboard = newKeyboard;
-        if (mView != null) {
+    private void nextKeyboard() {
+        mKeyboardIndex++;
+        if (mKeyboardIndex >= mKeyboards.size()) mKeyboardIndex = 0;
+        if (!mSymbolsShown) {
+            mCurrentKeyboard = mKeyboards.get(mKeyboardIndex);
             setupView();
         }
+    }
+
+    private void prevKeyboard() {
+        mKeyboardIndex--;
+        if (mKeyboardIndex < 0) mKeyboardIndex = mKeyboards.size() - 1;
+        if (!mSymbolsShown) {
+            mCurrentKeyboard = mKeyboards.get(mKeyboardIndex);
+            setupView();
+        }
+    }
+
+    private void toggleSymbols(boolean force) {
+        if (mSymbolsShown && !force) {
+            mCurrentKeyboard = mKeyboards.get(mKeyboardIndex);
+        } else {
+            mCurrentKeyboard = mSymbols;
+        }
+        mSymbolsShown = mCurrentKeyboard == mSymbols;
+        setupView();
     }
 
     private void updateStickPosition(float x, float y) {
@@ -573,7 +573,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
     }
 
-    private void updateRightStickPosition(float x, float y){
+    private void updateRightStickPosition(float x, float y) {
         double omega = Math.atan2(x, y) / Math.PI * 180;
 
         // We're looking for specific up-down-left-right, so we're ignoring diagonals
@@ -632,16 +632,16 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     }
 
-    private void keyDownUpStop(){
+    private void keyDownUpStop() {
         mKeyRepeat = 0;
     }
 
-    private void keyUp(int keyEventCode){
+    private void keyUp(int keyEventCode) {
         getCurrentInputConnection().sendKeyEvent(
                 new KeyEvent(KeyEvent.ACTION_UP, keyEventCode));
     }
 
-    private void keyDownUp(int keyEventCode){
+    private void keyDownUp(int keyEventCode) {
         keyDown(keyEventCode);
         keyUp(keyEventCode);
     }
