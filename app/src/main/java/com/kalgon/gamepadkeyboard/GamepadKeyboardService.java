@@ -11,6 +11,7 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
@@ -180,6 +181,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         highlightStickPosition();
     }
 
+    @Override
+    public boolean onEvaluateFullscreenMode() {
+        // We never want to be fullscreen
+        return false;
+    }
+
     /**
      * This is the main point where we do our initialization of the input method
      * to begin operating on an application.  At this point we have been
@@ -191,13 +198,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         Log.i("GamepadKeyboard", "onStartInput. restarting = " + restarting + ", Input type = " + attribute.inputType);
         super.onStartInput(attribute, restarting);
 
-        if (attribute.inputType == InputType.TYPE_NULL) {
-            // This is not an input editor, so it's better that the gamepad will work as a gamepad
-            // and not as a keyboard
-            mUsingGamepad = false;
-            return;
-        }
-        mUsingGamepad = true;
+//        if (attribute.inputType == InputType.TYPE_NULL) {
+//            // This is not an input editor, so it's better that the gamepad will work as a gamepad
+//            // and not as a keyboard
+//            mUsingGamepad = false;
+//            return;
+//        }
+//        mUsingGamepad = true;
 
         if (!restarting) {
             // We are now going to initialize our state based on the type of
@@ -238,9 +245,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     @Override
     public void onFinishInputView(boolean finishingInput) {
         Log.i("GamepadKeyboard", "onFinishInputView");
+        mUsingGamepad = false;
+
         if (usingFloatingKeyboard()) {
             removeViewFromWindowManager();
         }
+
         super.onFinishInputView(finishingInput);
     }
 
@@ -248,10 +258,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     public void onStartInputView(EditorInfo attribute, boolean restarting) {
         Log.i("GamepadKeyboard", "onStartInputView. restarting = " + restarting);
         super.onStartInputView(attribute, restarting);
+
         if (usingFloatingKeyboard()) {
             addViewToWindowManager();
         }
         setupView();
+        mUsingGamepad = true;
     }
 
     /**
@@ -439,8 +451,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     private void highlightStickPosition() {
         for (int i = 0; i < 9; i++) {
-            View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
-            circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
+            ViewGroup circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
+            for (int j = 0; j < circle.getChildCount(); j++) {
+                circle.getChildAt(j).setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
+            }
         }
     }
 
@@ -448,7 +462,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     public boolean onGenericMotionEvent(MotionEvent event) {
         // Check that the event came from a game controller
 
-        if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+        if (mUsingGamepad &&
+                (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
                 && event.getAction() == MotionEvent.ACTION_MOVE) {
 
 //            // Process all historical movement samples in the batch
