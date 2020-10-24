@@ -1,5 +1,6 @@
 package com.kalgon.gamepadkeyboard;
 
+import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
@@ -11,12 +12,13 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
 
@@ -24,9 +26,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     private final boolean DEBUG = true;
 
-    //    private InputMethodManager mInputMethodManager;
+    private InputMethodManager mInputMethodManager;
     private View mView = null;
     private WindowManager mWindowManager;
+    private SharedPreferences mPrefs;
 
     private boolean mCapsLock;
     private long mLastShiftTime;
@@ -48,6 +51,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private boolean mEnterPressed = false;
 
     private boolean mViewAddedToWindowManager = false;
+    private int mViewX = 0;
+    private int mViewY = 0;
     private int mViewDeltaX = 0;
     private int mViewDeltaY = 0;
 
@@ -77,6 +82,11 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         //        Debug.waitForDebugger();
 
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        mInputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+
+        mPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        mViewX = mPrefs.getInt(getString(R.string.viewX), 0);
+        mViewY = mPrefs.getInt(getString(R.string.viewY), 0);
     }
 
     @Override
@@ -122,9 +132,9 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                     PixelFormat.TRANSLUCENT);
 
-            params.gravity = Gravity.TOP | Gravity.START;
-            params.x = 0;
-            params.y = 0;
+            params.gravity = Gravity.BOTTOM | Gravity.END;
+            params.x = mViewX;
+            params.y = mViewY;
 
             Log.d("addViewToWindowManager", "mView parent = " + mView.getParent());
             mWindowManager.addView(mView, params);
@@ -139,6 +149,11 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             mWindowManager.removeView(mView);
             Log.d("removeViewFromWindowManager", "mView parent = " + mView.getParent());
             mViewAddedToWindowManager = false;
+
+            SharedPreferences.Editor editor = mPrefs.edit();
+            editor.putInt(getString(R.string.viewX), mViewX);
+            editor.putInt(getString(R.string.viewY), mViewY);
+            editor.apply();
         }
     }
 
@@ -284,6 +299,9 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
+                requestHideSelf(InputMethodManager.HIDE_NOT_ALWAYS);
+                return true;
+
             case KeyEvent.KEYCODE_DEL:
             case KeyEvent.KEYCODE_ENTER:
                 // Let the underlying text editor always handle these.
@@ -385,7 +403,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             }
         }
 
-
         return super.onKeyDown(keyCode, event);
     }
 
@@ -406,6 +423,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         Log.i("GamepadKeyboard", "onKeyUp");
         super.onKeyUp(keyCode, event);
+
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_S:  // DEBUG
+                toggleKeyboard();
+        }
 
         if (!mUsingGamepad) return false;
 
@@ -435,6 +458,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 mShift = false;
                 setupView();
                 return true;
+
+
         }
 
         if (DEBUG && (keyCode == KeyEvent.KEYCODE_DPAD_DOWN
@@ -448,13 +473,19 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         return false;
     }
 
+    private void toggleKeyboard() {
+        if (!mUsingGamepad) {
+            requestShowSelf(InputMethodManager.SHOW_IMPLICIT);
+        }
+        else {
+            requestHideSelf(InputMethodManager.HIDE_NOT_ALWAYS);
+        }
+    }
 
     private void highlightStickPosition() {
         for (int i = 0; i < 9; i++) {
-            ViewGroup circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
-            for (int j = 0; j < circle.getChildCount(); j++) {
-                circle.getChildAt(j).setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
-            }
+            View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
+            circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
         }
     }
 
@@ -705,12 +736,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     public boolean onTouch(View view, MotionEvent event) {
         final int X = (int) event.getRawX();
         final int Y = (int) event.getRawY();
+
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
 
             case MotionEvent.ACTION_DOWN:
                 WindowManager.LayoutParams lParams = (WindowManager.LayoutParams) view.getLayoutParams();
-                mViewDeltaX = X - lParams.x;
-                mViewDeltaY = Y - lParams.y;
+                mViewDeltaX = lParams.x + X;
+                mViewDeltaY = lParams.y + Y;
                 break;
             case MotionEvent.ACTION_UP:
                 break;
@@ -720,8 +752,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 break;
             case MotionEvent.ACTION_MOVE:
                 WindowManager.LayoutParams layoutParams = (WindowManager.LayoutParams) view.getLayoutParams();
-                layoutParams.x = X - mViewDeltaX;
-                layoutParams.y = Y - mViewDeltaY;
+                mViewX = layoutParams.x = mViewDeltaX - X;
+                mViewY = layoutParams.y = mViewDeltaY - Y;
                 mWindowManager.updateViewLayout(view, layoutParams);
                 break;
         }
