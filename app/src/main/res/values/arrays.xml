@@ -1,12 +1,30 @@
 <resources>
-    <!-- Reply Preference -->
-    <string-array name="reply_entries">
-        <item>Reply</item>
-        <item>Reply to all</item>
+    <!-- Keyboard type Preference -->
+    <string-array name="keyboard_type_entries">
+        <item>Full</item>
+        <item>Minimal - just the selected panel</item>
+        <item>Blind - no on-screen keyboard is shown</item>
     </string-array>
 
-    <string-array name="reply_values">
-        <item>reply</item>
-        <item>reply_all</item>
+    <string-array name="keyboard_type_values">
+        <item>full</item>
+        <item>minimal</item>
+        <item>blind</item>
+    </string-array>
+
+    <!-- Keyboard options -->
+    <!-- Note: The values need to match the xml name -->
+    <string-array name="languages_entries">
+        <item>English</item>
+        <item>Hebrew</item>
+    </string-array>
+
+    <string-array name="languages_values">
+        <item>english</item>
+        <item>hebrew</item>
+    </string-array>
+
+    <string-array name="default_languages">
+        <item>english</item>
     </string-array>
 </resources>

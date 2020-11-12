@@ -1,7 +1,6 @@
 package com.kalgon.gamepadkeyboard;
 
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
 import android.graphics.PixelFormat;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
@@ -19,18 +18,23 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 
+import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
-public class GamepadKeyboardService extends InputMethodService implements View.OnTouchListener {
+public class GamepadKeyboardService extends InputMethodService implements View.OnTouchListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private final boolean DEBUG = true;
 
-//    private InputMethodManager mInputMethodManager;
+    //    private InputMethodManager mInputMethodManager;
     private View mView = null;
     private WindowManager mWindowManager;
     private SharedPreferences mPrefs;
+    private SharedPreferences mSettingsPrefs;
 
     // Position of the stick (which represents the letters available). 0-8 where
     // 0 is centered, 1 is 12 o'clock and advancing clockwise every eighth
@@ -40,7 +44,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private KeyMap mCurrentKeyboard = null;
     private ArrayList<KeyMap> mKeyboards = new ArrayList<>();
     private int mKeyboardIndex = 0;
-    private final String[] AVAILABLE_KEYBOARDS = new String[]{"english", "hebrew"};
     private KeyMap mSymbols = null;
     private boolean mSymbolsShown = false;
 
@@ -65,6 +68,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         public float hatX = 0, hatY = 0;
 //        public long lastToastTime = 0;
     }
+
     private DebugVariables debugVars = new DebugVariables();
 
     /**
@@ -85,15 +89,44 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         mPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         mViewX = mPrefs.getInt(getString(R.string.viewX), 0);
         mViewY = mPrefs.getInt(getString(R.string.viewY), 0);
+
+        mSettingsPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        mSettingsPrefs.registerOnSharedPreferenceChangeListener(this);
     }
 
     @Override
     public void onDestroy() {
+        mSettingsPrefs.unregisterOnSharedPreferenceChangeListener(this);
+
         Log.i("GamepadKeyboard", "onDestroy");
         if (mView != null) mWindowManager.removeView(mView);
         super.onDestroy();
     }
 
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals("languages")) {
+            setAvailableKeyboards(true);
+        }
+    }
+
+    private void setAvailableKeyboards(boolean resetLanguageKeyboards) {
+        try {
+            if (mSymbols == null) {
+                mSymbols = new KeyMap(getApplicationContext(), R.xml.symbols);
+            }
+            if (mKeyboards.size() == 0 || resetLanguageKeyboards) {
+                mKeyboards.clear();
+
+                for (String keyboardName : mSettingsPrefs.getStringSet("languages", null)) {
+                    int resourceId = getResources().getIdentifier(keyboardName, "xml", getPackageName());
+                    mKeyboards.add(new KeyMap(getApplicationContext(), resourceId));
+                }
+            }
+        } catch (Exception e) {
+            Log.e("onInitializeInterface", e.toString());
+        }
+    }
 
     /**
      * This is the point where you can do all of your UI initialization.  It
@@ -103,17 +136,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     public void onInitializeInterface() {
         Log.d("GamepadKeyboard", "onInitializeInterface");
         // TODO: How to do this only if something really changed?
-        try {
-            if (mKeyboards.size() == 0) {
-                mSymbols = new KeyMap(getApplicationContext(), R.xml.symbols);
-                for (String keyboardName : AVAILABLE_KEYBOARDS) {
-                    int resourceId = getResources().getIdentifier(keyboardName, "xml", getPackageName());
-                    mKeyboards.add(new KeyMap(getApplicationContext(), resourceId));
-                }
-            }
-        } catch (Exception e) {
-            Log.e("onInitializeInterface", e.toString());
-        }
+
+        setAvailableKeyboards(false);
     }
 
     private boolean usingFloatingKeyboard() {
