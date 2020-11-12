@@ -1,6 +1,7 @@
 package com.kalgon.gamepadkeyboard;
 
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.graphics.PixelFormat;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
@@ -26,13 +27,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     private final boolean DEBUG = true;
 
-    private InputMethodManager mInputMethodManager;
+//    private InputMethodManager mInputMethodManager;
     private View mView = null;
     private WindowManager mWindowManager;
     private SharedPreferences mPrefs;
-
-    private boolean mCapsLock;
-    private long mLastShiftTime;
 
     // Position of the stick (which represents the letters available). 0-8 where
     // 0 is centered, 1 is 12 o'clock and advancing clockwise every eighth
@@ -40,15 +38,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private int mRightStickPosition = 0;
 
     private KeyMap mCurrentKeyboard = null;
-    private ArrayList<KeyMap> mKeyboards = new ArrayList<KeyMap>() {
-    };
+    private ArrayList<KeyMap> mKeyboards = new ArrayList<>();
     private int mKeyboardIndex = 0;
     private final String[] AVAILABLE_KEYBOARDS = new String[]{"english", "hebrew"};
     private KeyMap mSymbols = null;
     private boolean mSymbolsShown = false;
 
     private boolean mShift = false;
-    private boolean mEnterPressed = false;
 
     private boolean mViewAddedToWindowManager = false;
     private int mViewX = 0;
@@ -63,12 +59,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private int mKeyRepeat = 0;
 
     // DEBUG
-    private int debugDpadUpDown = 0;
-    private int debugDpadLeftRight = 0;
-    private float l2Value = 0, r2Value = 0;
-    private long lastToastTime = 0;
-    private float debugHatX, debugHatY;
-
+    private static class DebugVariables {
+        public int dpadUpDown = 0;
+        public int dpadLeftRight = 0;
+        public float hatX = 0, hatY = 0;
+//        public long lastToastTime = 0;
+    }
+    private DebugVariables debugVars = new DebugVariables();
 
     /**
      * Main initialization of the input method component.  Be sure to call
@@ -77,12 +74,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     @Override
     public void onCreate() {
         Log.i("GamepadKeyboard", "onCreate");
+
         super.onCreate();
 
         //        Debug.waitForDebugger();
 
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        mInputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+//        mInputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
 
         mPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         mViewX = mPrefs.getInt(getString(R.string.viewX), 0);
@@ -213,28 +211,15 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         Log.i("GamepadKeyboard", "onStartInput. restarting = " + restarting + ", Input type = " + attribute.inputType);
         super.onStartInput(attribute, restarting);
 
-//        if (attribute.inputType == InputType.TYPE_NULL) {
-//            // This is not an input editor, so it's better that the gamepad will work as a gamepad
-//            // and not as a keyboard
-//            mUsingGamepad = false;
-//            return;
-//        }
-//        mUsingGamepad = true;
-
         if (!restarting) {
             // We are now going to initialize our state based on the type of
             // text being edited.
             switch (attribute.inputType & InputType.TYPE_MASK_CLASS) {
                 case InputType.TYPE_CLASS_NUMBER:
                 case InputType.TYPE_CLASS_DATETIME:
+                case InputType.TYPE_CLASS_PHONE:
                     // Numbers and dates default to the symbols keyboard, with
                     // no extra features.
-                    toggleSymbols(true);
-                    break;
-
-                case InputType.TYPE_CLASS_PHONE:
-                    // Phones will also default to the symbols keyboard, though
-                    // often you will want to have a dedicated phone keyboard.
                     toggleSymbols(true);
                     break;
 
@@ -342,35 +327,35 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_UP: // DEBUG
-                debugDpadUpDown = -1;
+                debugVars.dpadUpDown = -1;
                 break;
 
             case KeyEvent.KEYCODE_DPAD_DOWN: // DEBUG
-                debugDpadUpDown = 1;
+                debugVars.dpadUpDown = 1;
                 break;
 
             case KeyEvent.KEYCODE_DPAD_LEFT: // DEBUG
-                debugDpadLeftRight = -1;
+                debugVars.dpadLeftRight = -1;
                 break;
 
             case KeyEvent.KEYCODE_DPAD_RIGHT: // DEBUG
-                debugDpadLeftRight = 1;
+                debugVars.dpadLeftRight = 1;
                 break;
 
             case KeyEvent.KEYCODE_7: // DEBUG
-                debugHatX = 1f;
+                debugVars.hatX = 1f;
                 break;
 
             case KeyEvent.KEYCODE_8: // DEBUG
-                debugHatX = -1f;
+                debugVars.hatX = -1f;
                 break;
 
             case KeyEvent.KEYCODE_9: // DEBUG
-                debugHatY = 1f;
+                debugVars.hatY = 1f;
                 break;
 
             case KeyEvent.KEYCODE_0: // DEBUG
-                debugHatY = -1f;
+                debugVars.hatY = -1f;
                 break;
 
             case KeyEvent.KEYCODE_BUTTON_R2:
@@ -398,7 +383,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                     || keyCode == KeyEvent.KEYCODE_8
                     || keyCode == KeyEvent.KEYCODE_9
                     || keyCode == KeyEvent.KEYCODE_0) {
-                updateHat(debugHatX, debugHatY);
+                updateHat(debugVars.hatX, debugVars.hatY);
                 return true;
             }
         }
@@ -408,10 +393,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     // DEBUG
     private void updateDpadStickPosition() {
-        float x = debugDpadLeftRight;
-        float y = debugDpadUpDown;
+        float x = debugVars.dpadLeftRight;
+        float y = debugVars.dpadUpDown;
 
-        if (debugDpadLeftRight != 0 && debugDpadUpDown != 0) {
+        if (debugVars.dpadLeftRight != 0 && debugVars.dpadUpDown != 0) {
             x *= 0.75;
             y *= 0.75;
         }
@@ -435,22 +420,22 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:   // DEBUG
             case KeyEvent.KEYCODE_DPAD_DOWN: // DEBUG
-                debugDpadUpDown = 0;
+                debugVars.dpadUpDown = 0;
                 break;
 
             case KeyEvent.KEYCODE_DPAD_LEFT:  // DEBUG
             case KeyEvent.KEYCODE_DPAD_RIGHT: // DEBUG
-                debugDpadLeftRight = 0;
+                debugVars.dpadLeftRight = 0;
                 break;
 
             case KeyEvent.KEYCODE_7: // DEBUG
             case KeyEvent.KEYCODE_8: // DEBUG
-                debugHatX = 0;
+                debugVars.hatX = 0;
                 break;
 
             case KeyEvent.KEYCODE_9: // DEBUG
             case KeyEvent.KEYCODE_0: // DEBUG
-                debugHatY = 0;
+                debugVars.hatY = 0;
                 break;
 
             case KeyEvent.KEYCODE_BUTTON_L2:
@@ -476,8 +461,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private void toggleKeyboard() {
         if (!mUsingGamepad) {
             requestShowSelf(InputMethodManager.SHOW_IMPLICIT);
-        }
-        else {
+        } else {
             requestHideSelf(InputMethodManager.HIDE_NOT_ALWAYS);
         }
     }
@@ -692,45 +676,21 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         keyUp(keyEventCode);
     }
 
-    /**
-     * Helper to send a character to the editor as raw key events.
-     */
-    private void sendKey(int keyCode) {
-        if (keyCode == '\n') {
-            keyDownUp(KeyEvent.KEYCODE_ENTER);
-        } else {
-            if (keyCode >= '0' && keyCode <= '9') {
-                keyDownUp(keyCode - '0' + KeyEvent.KEYCODE_0);
-            } else {
-                getCurrentInputConnection().commitText(String.valueOf((char) keyCode), 1);
-            }
-        }
-    }
-
-
-//
-//    private IBinder getToken() {
-//        final Dialog dialog = getWindow();
-//        if (dialog == null) {
-//            return null;
-//        }
-//        final Window window = dialog.getWindow();
-//        if (window == null) {
-//            return null;
-//        }
-//        return window.getAttributes().token;
-//    }
-//
-//    private void checkToggleCapsLock() {
-//        long now = System.currentTimeMillis();
-//        if (mLastShiftTime + 800 > now) {
-//            mCapsLock = !mCapsLock;
-//            mLastShiftTime = 0;
+//    /**
+//     * Helper to send a character to the editor as raw key events.
+//     */
+//    private void sendKey(int keyCode) {
+//        if (keyCode == '\n') {
+//            keyDownUp(KeyEvent.KEYCODE_ENTER);
 //        } else {
-//            mLastShiftTime = now;
+//            if (keyCode >= '0' && keyCode <= '9') {
+//                keyDownUp(keyCode - '0' + KeyEvent.KEYCODE_0);
+//            } else {
+//                getCurrentInputConnection().commitText(String.valueOf((char) keyCode), 1);
+//            }
 //        }
 //    }
-//
+
 
     @Override
     public boolean onTouch(View view, MotionEvent event) {
@@ -744,12 +704,12 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 mViewDeltaX = lParams.x + X;
                 mViewDeltaY = lParams.y + Y;
                 break;
-            case MotionEvent.ACTION_UP:
-                break;
-            case MotionEvent.ACTION_POINTER_DOWN:
-                break;
-            case MotionEvent.ACTION_POINTER_UP:
-                break;
+//            case MotionEvent.ACTION_UP:
+//                break;
+//            case MotionEvent.ACTION_POINTER_DOWN:
+//                break;
+//            case MotionEvent.ACTION_POINTER_UP:
+//                break;
             case MotionEvent.ACTION_MOVE:
                 WindowManager.LayoutParams layoutParams = (WindowManager.LayoutParams) view.getLayoutParams();
                 mViewX = layoutParams.x = mViewDeltaX - X;
