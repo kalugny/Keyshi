@@ -1,6 +1,8 @@
 package com.kalgon.gamepadkeyboard;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
@@ -104,6 +106,15 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         super.onDestroy();
     }
 
+    private void clearViewParent() {
+        if (!mViewAddedToWindowManager && mView != null) {
+            ViewGroup vg = (ViewGroup) mView.getParent();
+            if (vg != null) {
+                vg.removeAllViews();
+            }
+        }
+    }
+
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         Log.d("GamepadKeyboard", "onSharedPreferenceChanged");
@@ -111,10 +122,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         if (key.equals("languages")) {
             setAvailableKeyboards(true);
         } else if (key.equals("draw_on_top")) {
-            ViewGroup vg = (ViewGroup) mView.getParent();
-            if (vg != null) {
-                vg.removeAllViews();
-            }
+            clearViewParent();
         }
     }
 
@@ -189,7 +197,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
     }
 
-    private boolean usingBlindKeyboard(){
+    private boolean usingBlindKeyboard() {
         return mSettingsPrefs.getString("keyboard_type", "full").equals("blind");
     }
 
@@ -330,6 +338,13 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             case KeyEvent.KEYCODE_ENTER:
                 // Let the underlying text editor always handle these.
                 return false;
+
+            case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_BUTTON_SELECT:
+                // The "onKeyUp" method provides the functionality.
+                // Here we just want to stop the default functionality
+                return true;
+
 
             case KeyEvent.KEYCODE_BUTTON_A:
             case KeyEvent.KEYCODE_BUTTON_B:
@@ -483,6 +498,14 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
                 setupView();
                 return true;
 
+            case KeyEvent.KEYCODE_BUTTON_SELECT:
+            case KeyEvent.KEYCODE_D:    // DEBUG
+                Intent i = new Intent(this, SettingsActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(i);
+                return true;
 
         }
 
@@ -512,12 +535,19 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
             if (kbType.equals("full")) {
                 circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
-            }
-            else if (kbType.equals("minimal")) {
+                circle.setVisibility(View.VISIBLE);
+            } else if (kbType.equals("minimal")) {
                 circle.setVisibility(mStickPosition == i ? View.VISIBLE : View.GONE);
                 circle.setBackgroundResource(R.drawable.circle);
             }
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        Log.d("GamepadKeyboard", "onConfigurationChanged");
+        clearViewParent();
+        super.onConfigurationChanged(newConfig);
     }
 
     @Override
@@ -722,22 +752,6 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         keyDown(keyEventCode);
         keyUp(keyEventCode);
     }
-
-//    /**
-//     * Helper to send a character to the editor as raw key events.
-//     */
-//    private void sendKey(int keyCode) {
-//        if (keyCode == '\n') {
-//            keyDownUp(KeyEvent.KEYCODE_ENTER);
-//        } else {
-//            if (keyCode >= '0' && keyCode <= '9') {
-//                keyDownUp(keyCode - '0' + KeyEvent.KEYCODE_0);
-//            } else {
-//                getCurrentInputConnection().commitText(String.valueOf((char) keyCode), 1);
-//            }
-//        }
-//    }
-
 
     @Override
     public boolean onTouch(View view, MotionEvent event) {

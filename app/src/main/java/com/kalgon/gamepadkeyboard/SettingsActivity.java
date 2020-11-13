@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -19,8 +20,7 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import java.util.Set;
 
-public class SettingsActivity extends AppCompatActivity
-        implements ActivityCompat.OnRequestPermissionsResultCallback {
+public class SettingsActivity extends AppCompatActivity {
 
 //    /**
 //     * code to post/handler request for permission
@@ -76,8 +76,17 @@ public class SettingsActivity extends AppCompatActivity
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
         }
+    }
 
-
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            // Respond to the action bar's Up/Home button
+            case android.R.id.home:
+                super.onBackPressed();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat
