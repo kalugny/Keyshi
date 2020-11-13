@@ -102,7 +102,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         mSettingsPrefs.unregisterOnSharedPreferenceChangeListener(this);
 
         Log.i("GamepadKeyboard", "onDestroy");
-        if (mView != null) mWindowManager.removeView(mView);
+        removeViewFromWindowManager();
         super.onDestroy();
     }
 
@@ -214,9 +214,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             mView = getLayoutInflater().inflate(R.layout.diamond_ui, null);
             setupView();
 
-            if (usingFloatingKeyboard()) {
-                mView.setOnTouchListener(this);
-            }
+            mView.setOnTouchListener(this);
         }
 
         if (usingFloatingKeyboard() || usingBlindKeyboard()) {
