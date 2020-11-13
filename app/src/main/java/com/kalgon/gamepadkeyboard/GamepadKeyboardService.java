@@ -110,9 +110,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
         if (key.equals("languages")) {
             setAvailableKeyboards(true);
-        }
-        else if (key.equals("draw_on_top")){
-            ViewGroup vg = (ViewGroup)mView.getParent();
+        } else if (key.equals("draw_on_top")) {
+            ViewGroup vg = (ViewGroup) mView.getParent();
             if (vg != null) {
                 vg.removeAllViews();
             }
@@ -150,7 +149,9 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     }
 
     private boolean usingFloatingKeyboard() {
-        return Settings.canDrawOverlays(getApplicationContext()) && mSettingsPrefs.getBoolean("draw_on_top", true);
+        return Settings.canDrawOverlays(getApplicationContext()) &&
+                mSettingsPrefs.getBoolean("draw_on_top", true) &&
+                !usingBlindKeyboard();
     }
 
     private void addViewToWindowManager() {
@@ -188,6 +189,10 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         }
     }
 
+    private boolean usingBlindKeyboard(){
+        return mSettingsPrefs.getString("keyboard_type", "full").equals("blind");
+    }
+
     /**
      * Called by the framework when your view for creating input needs to
      * be generated.  This will be called the first time your input method
@@ -206,7 +211,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
             }
         }
 
-        if (usingFloatingKeyboard()) {
+        if (usingFloatingKeyboard() || usingBlindKeyboard()) {
             return null;
         }
 
@@ -219,7 +224,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
         for (int i = 0; i < 9; i++) {
             View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
             for (int b = 0; b < buttons.length; b++) {
-                TextView buttonView = circle.findViewById(getResources().getIdentifier(String.valueOf(buttons[b]), "id", getPackageName()));
+                TextView buttonView = circle.findViewById(
+                        getResources().getIdentifier(String.valueOf(buttons[b]), "id", getPackageName()));
                 String letter = mCurrentKeyboard.getKey(i, b, mShift);
                 buttonView.setText(letter);
             }
@@ -500,9 +506,17 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     }
 
     private void highlightStickPosition() {
+        String kbType = mSettingsPrefs.getString("keyboard_type", "full");
+
         for (int i = 0; i < 9; i++) {
             View circle = mView.findViewById(getResources().getIdentifier("diamond_" + i, "id", getPackageName()));
-            circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
+            if (kbType.equals("full")) {
+                circle.setBackgroundResource(mStickPosition == i ? R.drawable.circle_selected : R.drawable.circle);
+            }
+            else if (kbType.equals("minimal")) {
+                circle.setVisibility(mStickPosition == i ? View.VISIBLE : View.GONE);
+                circle.setBackgroundResource(R.drawable.circle);
+            }
         }
     }
 
