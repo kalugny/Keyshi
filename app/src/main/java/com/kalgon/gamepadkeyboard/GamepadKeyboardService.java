@@ -12,6 +12,7 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
@@ -105,8 +106,16 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        Log.d("GamepadKeyboard", "onSharedPreferenceChanged");
+
         if (key.equals("languages")) {
             setAvailableKeyboards(true);
+        }
+        else if (key.equals("draw_on_top")){
+            ViewGroup vg = (ViewGroup)mView.getParent();
+            if (vg != null) {
+                vg.removeAllViews();
+            }
         }
     }
 
@@ -141,7 +150,7 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     }
 
     private boolean usingFloatingKeyboard() {
-        return Settings.canDrawOverlays(getApplicationContext());
+        return Settings.canDrawOverlays(getApplicationContext()) && mSettingsPrefs.getBoolean("draw_on_top", true);
     }
 
     private void addViewToWindowManager() {
@@ -168,8 +177,8 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
     private void removeViewFromWindowManager() {
         Log.d("removeViewFromWindowManager", "mViewAddedToWindowManager = " + mViewAddedToWindowManager);
         if (mViewAddedToWindowManager) {
-            mWindowManager.removeView(mView);
             Log.d("removeViewFromWindowManager", "mView parent = " + mView.getParent());
+            mWindowManager.removeView(mView);
             mViewAddedToWindowManager = false;
 
             SharedPreferences.Editor editor = mPrefs.edit();
@@ -718,6 +727,9 @@ public class GamepadKeyboardService extends InputMethodService implements View.O
 
     @Override
     public boolean onTouch(View view, MotionEvent event) {
+
+        if (!usingFloatingKeyboard()) return false;
+
         final int X = (int) event.getRawX();
         final int Y = (int) event.getRawY();
 
