@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Gamepad Keyboard</string>
+    <string name="app_name">Keytty Gamepad Keyboard</string>
     <!-- Settings Activity Title -->
     <string name="title_activity_settings">Settings</string>
 
